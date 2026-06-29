@@ -28,15 +28,16 @@ class Message(BaseModel):
     snder_user_id: int = Field(gt=0)
     
     # надо разобраться со стилем
-    group_id: Annotated[int, Field(gt=0)] | None = None
+    # group_id: Annotated[int, Field(gt=0)] | None = None
+    group_id: int | None =  Field(default=None, gt=0)
     recipient_user_id: int | None = Field(None, gt=0) 
     
     text: str = Field(max_length=8192, repr=False)
 
     @model_validator(mode='after')
     def check_at_least_ine_exists(self) -> Self:
-        if not self.group_id or self.recipient_user_id:
-            raise ValueError()
+        if not self.group_id and not self.recipient_user_id:
+            raise ValueError("Error")
         return self
 
 class Group(BaseModel):
