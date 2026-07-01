@@ -1,10 +1,12 @@
 import code
 from pydantic import HttpUrl
 from alembic.util import status
-from fastapi import FastAPI, Depends, HTTPException
+from fastapi import FastAPI, Depends, HTTPException, Response
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.future import select
 from passlib.context import CryptContext
+import jwt
+from datetime import datetime, timedelta, timezone
 
 from database import async_session_maker
 from models import User
@@ -17,6 +19,19 @@ from schemas import (
 
 app = FastAPI(title="Messenger")
 
+SECRET_KEY = "super-secret-discord-key-change-me"
+ALGORITHM = "HS256"
+ACCESS_TOKEN_EXPIRE_MINUTES = 60 * 24 * 7 # Токен будет жить 7 дней
+
+def create_access_token(data: dict):
+    to_encode = data.copy()
+    # Устанавливаем время жизни токена (exp - это стандартное поле в JWT)
+    expire = datetime.now(timezone.utc) + timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
+    to_encode.update({"exp": expire})
+    
+    # генерация токена
+    encoded_jwt = jwt.encode(to_encode, SECRET_KEY, algorithm=ALGORITHM)
+    return encoded_jwt
 
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 
@@ -62,9 +77,10 @@ async def register_user(
     return new_user
 
 
-@app.post("/login", response_model=UserResponseSchema)
+@app.post("/login")
 async def login_user(
     user_data: UserLoginSchema,
+    response: Response, # Внедряем объект Response, чтобы управлять Куками
     session: AsyncSession = Depends(get_db)
 ):
     query = select(User).where(User.email == user_data.email)
@@ -77,7 +93,18 @@ async def login_user(
     if not verify_password(user_data.password, user_db.hashed_password):
         raise HTTPException(status_code=400, detail="Incorrect password")
     
-    return user_db
+    access_token = create_access_token(data={"sub": str(user_db.id)})
+    
+    response.set_cookie(
+        key="access_token",
+        value=access_token,
+        httponly=True,   # JS на фронтенде не сможет украсть куки
+        secure=False,   #  На продакшене (HTTPS) нужно ставить True
+        samesite="lax",
+        max_age=ACCESS_TOKEN_EXPIRE_MINUTES * 60
+    )
+    
+    return {"message":"True result"}
     
 
 @app.get("/messages")
