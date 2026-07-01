@@ -16,16 +16,9 @@ config = context.config
 if config.config_file_name is not None:
     fileConfig(config.config_file_name)
 
-import sys
-from os.path import dirname, abspath
-
-# Убираем один внешний dirname, так как нам нужно подняться 
-# на 1 уровень вверх (из alembic/ в backend/)
-sys.path.insert(0, dirname(abspath(__file__)))
-
 # Теперь Python увидит database.py внутри папки backend
 from database import Base
-
+from models import User
 # add your model's MetaData object here
 # for 'autogenerate' support
 # from myapp import mymodel

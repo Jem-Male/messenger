@@ -8,13 +8,26 @@ from typing import (
     Annotated, # Annotated - можно прописать удобные подсказки
     Self
 )
+from datetime import datetime
 
-
-class UserSchema(BaseModel):
-    user_id: int = Field(gt=0, description="Unique user ID")
-    email: EmailStr
+class UserRegisterSchema(BaseModel):
     username: str = Field(min_length=3, max_length=60)
-    hashed_password: str = Field(min_length=60, max_length=60, repr=False)
+    email: EmailStr
+    password: str = Field(min_length=8, description="Чистый пароль от пользователя")
+
+class UserResponseSchema(BaseModel):
+    id: int # ID генерирует база, поэтому он есть в ответе
+    username: str
+    email: EmailStr
+    created_at: datetime
+
+    class Config:
+        from_attributes = True # Позволяет Pydantic читать данные из моделей SQLAlchemy
+
+
+class UserLoginSchema(BaseModel):
+    email: EmailStr
+    password: str = Field(min_length=8, description="Пароль от пользователя")
 
 
 class MessageCreateSchema(BaseModel):
