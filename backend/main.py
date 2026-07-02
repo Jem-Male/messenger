@@ -1,7 +1,13 @@
 import code
 from pydantic import HttpUrl
 from alembic.util import status
-from fastapi import FastAPI, Depends, HTTPException, Response
+from fastapi import(
+    FastAPI, 
+    Depends, 
+    HTTPException, 
+    Response, 
+    Request   
+)
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.future import select
 from passlib.context import CryptContext
@@ -45,6 +51,37 @@ async def get_db():
     async with async_session_maker() as session:
         yield session # Выдает сессию на время запроса, а потом автоматически закрывает
 
+
+async def get_current_user(
+    request: Request,
+    session: AsyncSession = Depends(get_db)
+):
+    # достаем токен из куки
+    token = request.cookies.get("access_token")
+    if not token:
+        raise HTTPException(status_code=401, detail="You are not logged in")
+    
+    try:
+        # проверка: расшифровка токена
+        payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
+        user_id: str = payload.get("sub")
+        if user_id is None:
+            raise HTTPException(status_code=401, detail="Malformed  token")
+        
+    except jwt.ExpiredSignatureError:
+        raise HTTPException(status_code=401, detail="Token expired")
+    except jwt.PyJWTError:
+        raise HTTPException(status_code=401,detail="Invalid token")
+
+    query = select(User).where(User.id == int(user_id))
+    result = await session.execute(query)
+    user = result.scalars().first()
+    
+    if user is None:
+        raise HTTPException(status_code=401, detail="User deleted or not found")
+    
+    return user
+    
 messages = []
 
 
@@ -105,6 +142,14 @@ async def login_user(
     )
     
     return {"message":"True result"}
+
+
+@app.get('/users/me', response_model=UserResponseSchema)
+async def read_user_me(
+    current_user: User = Depends(get_current_user)
+):
+    # что то здесь
+    return current_user
     
 
 @app.get("/messages")
