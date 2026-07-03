@@ -6,8 +6,11 @@ from fastapi import(
     Depends, 
     HTTPException, 
     Response, 
-    Request   
+    Request,
+    WebSocket,
+    WebSocketDisconnect 
 )
+from fastapi.responses import HTMLResponse
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.future import select
 from passlib.context import CryptContext
@@ -85,6 +88,75 @@ async def get_current_user(
 messages = []
 
 
+class ConnectionManager:
+    def __init__(self):
+        # храним активные подключения
+        self.active_connections: list[WebSocket] = []
+        
+    async def connect(self, websocket: WebSocket):
+        await websocket.accept() # Принимаем подключение
+        self.active_connections.append(websocket) # Сохраняем клиента
+        
+    def disconnect(self, websocket: WebSocket):
+        self.active_connections.remove(websocket) # удаляем клиента
+        
+    async def broadcast(self, message: str):
+        # рассылка сообщения всем клиентам
+        for connection in self.active_connections:
+            await connection.send_text(message) 
+                      
+# Общий экземпляр менеджера
+manager = ConnectionManager() 
+
+
+html_page = """
+<!DOCTYPE html>
+<html>
+    <head>
+        <title>Чат</title>
+    </head>
+    <body>
+        <h1>Тестовый Чат</h1>
+        <form action="" onsubmit="sendMessage(event)">
+            <input type="text" id="messageText" autocomplete="off"/>
+            <button>Отправить</button>
+        </form>
+        <ul id='messages'>
+        </ul>
+        <script>
+            // Подключаемся к нашему вебсокету!
+            var ws = new WebSocket("ws://localhost:5000/ws/chat");
+            
+            // Что делать, когда пришло сообщение от сервера
+            ws.onmessage = function(event) {
+                var messages = document.getElementById('messages')
+                var message = document.createElement('li')
+                var content = document.createTextNode(event.data)
+                message.appendChild(content)
+                messages.appendChild(message)
+            };
+            
+            // Что делать при нажатии на кнопку
+            function sendMessage(event) {
+                var input = document.getElementById("messageText")
+                ws.send(input.value) // Отправляем на сервер
+                input.value = ''
+                event.preventDefault()
+            }
+        </script>
+    </body>
+</html>
+"""
+
+@app.get("/chat-test")
+async def get_chat_page():
+    return HTMLResponse(html_page)
+
+
+@app.get("/")
+async def welcome():
+    return {"Result": "True"}
+
 # response_model=UserResponseSchema говорит FastAPI: "Отфильтруй ответ через эту схему"
 @app.post("/register", response_model=UserResponseSchema)
 async def register_user(
@@ -151,6 +223,24 @@ async def read_user_me(
     # что то здесь
     return current_user
     
+
+@app.websocket("/ws/chat")
+async def websocket_chat(websocket: WebSocket):
+    # клинет подключился:
+    await manager.connect(websocket)
+    try:
+        # Запускаем бесконечный цикл прослушивания этой "трубки"
+        while True:
+            # ждем пока клиент что то напишет
+            data = await websocket.receive_text()
+            # если кто то написал то рассылаем это остальным
+            await manager.broadcast(f"Аноним: {data}")
+    
+    except WebSocketDisconnect:
+        # если клиент отключился
+        manager.disconnect(websocket)
+        await manager.broadcast("Кто то покинул чать")
+
 
 @app.get("/messages")
 def read_messages():
