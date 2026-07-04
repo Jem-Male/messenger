@@ -8,7 +8,8 @@ from fastapi import(
     Response, 
     Request,
     WebSocket,
-    WebSocketDisconnect 
+    WebSocketDisconnect,
+    WebSocketException
 )
 from fastapi.responses import HTMLResponse
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -225,21 +226,49 @@ async def read_user_me(
     
 
 @app.websocket("/ws/chat")
-async def websocket_chat(websocket: WebSocket):
+async def websocket_chat(
+    websocket: WebSocket,
+    session: AsyncSession = Depends(get_db)
+):
+    token = websocket.cookies.get("access_token")
+    
+    if not token:
+        await websocket.close(code=1008, reason="not authorized")
+        return
+        
+    try:
+        payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
+        user_id = payload.get("sub")
+        
+        queru = select(User).where(User.id==int(user_id))
+        result = await session.execute(queru)
+        user = result.scalars().first()
+        
+        if not user:
+            await websocket.close(code=1008, reason="user not found")
+            return
+        
+    except jwt.PyJWTError:
+        await websocket.close(code=1008, reason="Malformed token")
+        return
+    
     # клинет подключился:
     await manager.connect(websocket)
+    
+    await manager.broadcast(f"{user.username} - connected")
+    
     try:
         # Запускаем бесконечный цикл прослушивания этой "трубки"
         while True:
             # ждем пока клиент что то напишет
             data = await websocket.receive_text()
             # если кто то написал то рассылаем это остальным
-            await manager.broadcast(f"Аноним: {data}")
+            await manager.broadcast(f"{user.username}: {data}")
     
     except WebSocketDisconnect:
         # если клиент отключился
         manager.disconnect(websocket)
-        await manager.broadcast("Кто то покинул чать")
+        await manager.broadcast(f"{user.username} - disconect")
 
 
 @app.get("/messages")
