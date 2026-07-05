@@ -18,7 +18,7 @@ if config.config_file_name is not None:
 
 # Теперь Python увидит database.py внутри папки backend
 from database import Base
-from models import User
+from models import User, Message
 # add your model's MetaData object here
 # for 'autogenerate' support
 # from myapp import mymodel

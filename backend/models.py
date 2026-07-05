@@ -1,4 +1,4 @@
-from sqlalchemy import label
+from sqlalchemy import label, String, DateTime, ForeignKey, Text
 from sqlalchemy.engine import default
 from sqlalchemy import String, DateTime
 from sqlalchemy.orm import Mapped, mapped_column
@@ -16,3 +16,16 @@ class User(Base):
         DateTime(timezone=True),
         default=lambda: datetime.now(timezone.utc)
     )
+    
+    
+class Message(Base):
+    __tablename__ = "messages"
+    
+    id: Mapped[int] = mapped_column(primary_key=True)
+    sender_id: Mapped[int] = mapped_column(ForeignKey("users.id"))
+    text: Mapped[str] = mapped_column(Text, nullable=False)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        default=lambda: datetime.now(timezone.utc)
+    )
+    

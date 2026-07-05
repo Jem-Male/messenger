@@ -19,7 +19,7 @@ import jwt
 from datetime import datetime, timedelta, timezone
 
 from database import async_session_maker
-from models import User
+from models import User, Message
 from schemas import (
     UserRegisterSchema,
     UserResponseSchema,
@@ -262,6 +262,9 @@ async def websocket_chat(
         while True:
             # ждем пока клиент что то напишет
             data = await websocket.receive_text()
+            new_message = Message(sender_id=user.id, text=data)
+            session.add(new_message)
+            await session.commit()
             # если кто то написал то рассылаем это остальным
             await manager.broadcast(f"{user.username}: {data}")
     
@@ -270,6 +273,25 @@ async def websocket_chat(
         manager.disconnect(websocket)
         await manager.broadcast(f"{user.username} - disconect")
 
+
+@app.get("/chat/history")
+async def get_chat_history(
+    session: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
+    query = select(Message).order_by(Message.created_at.desc())
+    result = await session.execute(query)
+    messages = result.scalars().all()
+    
+    return [
+        {
+            "id": msg.id,
+            "sender_id": msg.sender_id,
+            "text": msg.text,
+            "created_at": msg.created_at
+        }
+        for msg in messages
+    ]
 
 @app.get("/messages")
 def read_messages():
