@@ -16,6 +16,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.future import select
 from passlib.context import CryptContext
 import jwt
+from fastapi.middleware.cors import CORSMiddleware
 from datetime import datetime, timedelta, timezone
 
 from database import async_session_maker
@@ -32,6 +33,18 @@ app = FastAPI(title="Messenger")
 SECRET_KEY = "super-secret-discord-key-change-me"
 ALGORITHM = "HS256"
 ACCESS_TOKEN_EXPIRE_MINUTES = 60 * 24 * 7 # Токен будет жить 7 дней
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=[
+        "http://localhost:5500", 
+        "http://127.0.0.1:5500"
+    ],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
 
 def create_access_token(data: dict):
     to_encode = data.copy()

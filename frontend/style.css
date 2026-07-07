@@ -1,0 +1,81 @@
+/* Убираем стандартные отступы браузера и ставим темный фон */
+body {
+    margin: 0;
+    padding: 0;
+    background-color: #313338; /* Фирменный цвет фона Discord */
+    color: white;
+    font-family: Arial, sans-serif;
+    
+    /* Flexbox центрирует нашу форму ровно посередине экрана */
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    height: 100vh; /* Высота 100% от экрана */
+}
+
+/* Карточка авторизации */
+.login-box {
+    background-color: #313338;
+    padding: 32px;
+    border-radius: 8px;
+    width: 416px;
+    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.2);
+}
+
+.login-box h2 {
+    text-align: center;
+    margin-top: 0;
+}
+
+.login-box p {
+    text-align: center;
+    color: #b5bac1;
+    font-size: 14px;
+}
+
+/* Форма и инпуты */
+form {
+    display: flex;
+    flex-direction: column; /* Выстраиваем элементы друг под другом */
+}
+
+label {
+    font-size: 12px;
+    color: #b5bac1;
+    font-weight: bold;
+    margin-bottom: 8px;
+    margin-top: 16px;
+}
+
+input {
+    background-color: #1e1f22;
+    border: none;
+    padding: 10px;
+    border-radius: 4px;
+    color: white;
+    font-size: 16px;
+    outline: none; /* Убирает стандартную синюю рамку при клике */
+}
+
+button {
+    background-color: #5865f2; /* Синий цвет кнопок Discord */
+    color: white;
+    border: none;
+    padding: 12px;
+    border-radius: 4px;
+    font-size: 16px;
+    font-weight: bold;
+    margin-top: 24px;
+    cursor: pointer;
+}
+
+button:hover {
+    background-color: #4752c4;
+}
+
+.error-text {
+    color: #fa777c;
+    margin-top: 10px;
+    text-align: center;
+    font-size: 14px;
+}
